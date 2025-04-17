@@ -6,39 +6,166 @@
   <title>{{title}}</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
   <style>
-    body { background-color: #f8f9fa; }
-    .card { border-radius: 15px; box-shadow: 0 6px 15px rgba(0,0,0,0.08); }
-    .card-header { border-radius: 15px 15px 0 0 !important; }
-    .form-control { border-radius: 10px; padding: 12px; }
-    .btn { border-radius: 10px; padding: 10px 20px; font-weight: 600; }
-    .log-container { 
-      max-height: 300px; 
-      overflow-y: auto; 
-      background-color: #23272b; 
-      color: #f8f9fa; 
-      border-radius: 10px; 
+    body {
+      background: linear-gradient(135deg, #232526 0%, #414345 100%);
+      min-height: 100vh;
+      font-family: 'Orbitron', 'Segoe UI', Arial, sans-serif;
+      transition: border 0.7s;
+      border: 10px solid transparent;
+      box-sizing: border-box;
+      overflow-x: hidden;
+    }
+    .bg-animated {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      z-index: 0;
+      pointer-events: none;
+      background: url('https://www.transparenttextures.com/patterns/cubes.png'), linear-gradient(120deg, #00ffb4 0%, #005eff 100%);
+      opacity: 0.12;
+      animation: bgmove 20s linear infinite;
+    }
+    @keyframes bgmove {
+      0% { background-position: 0 0, 0 0; }
+      100% { background-position: 400px 400px, 0 0; }
+    }
+    .card {
+      border-radius: 18px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+      position: relative;
+      z-index: 1;
+    }
+    .card-header {
+      border-radius: 18px 18px 0 0 !important;
+      background: linear-gradient(90deg, #005eff 0%, #00ffb4 100%);
+      color: #fff;
+      text-shadow: 1px 1px 8px #00000044;
+    }
+    .form-control {
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 1.1rem;
+      background: #23272b;
+      color: #fff;
+      border: 1.5px solid #00ffb4;
+      box-shadow: 0 2px 8px #00ffb422;
+    }
+    .form-control:focus {
+      border-color: #005eff;
+      box-shadow: 0 0 0 0.2rem #005eff44;
+      background: #23272b;
+      color: #fff;
+    }
+    .btn {
+      border-radius: 10px;
+      padding: 10px 20px;
+      font-weight: 700;
+      font-size: 1.1rem;
+      letter-spacing: 1px;
+      background: linear-gradient(90deg, #005eff 0%, #00ffb4 100%);
+      border: none;
+      color: #fff;
+      box-shadow: 0 2px 8px #005eff44;
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+    .btn:active, .btn:focus {
+      background: linear-gradient(90deg, #00ffb4 0%, #005eff 100%);
+      box-shadow: 0 4px 16px #00ffb444;
+    }
+    .log-container {
+      max-height: 300px;
+      overflow-y: auto;
+      background-color: #181c1f;
+      color: #f8f9fa;
+      border-radius: 10px;
       padding: 15px;
       font-family: 'Courier New', monospace;
+      font-size: 1rem;
+      box-shadow: 0 2px 8px #00ffb422;
     }
-    .log-entry { margin-bottom: 8px; font-size: 0.95rem; }
+    .log-entry { margin-bottom: 8px; font-size: 0.97rem; }
     .log-time { color: #6c757d; font-size: 0.80rem; }
-    .card-number { letter-spacing: 2px; font-family: monospace; }
-    .fade-in {
-      animation: fadeIn 0.7s;
+    .card-number { letter-spacing: 2px; font-family: monospace; font-size: 1.1rem; }
+    .fade-in { animation: fadeIn 0.7s; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .progress-bar-animated {
+      animation: progressBar 2s linear forwards;
     }
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to   { opacity: 1; }
+    @keyframes progressBar {
+      from { width: 0; }
+      to { width: 100%; }
+    }
+    /* Bordes dinámicos */
+    body.live-border {
+      border-color: #00ffb4 !important;
+      box-shadow: 0 0 40px 10px #00ffb4cc;
+    }
+    body.error-border {
+      border-color: #ff0033 !important;
+      box-shadow: 0 0 40px 10px #ff0033cc;
+    }
+    /* Música animación */
+    .music-icon {
+      animation: musicPulse 1.2s infinite alternate;
+      color: #00ffb4;
+      font-size: 2.2rem;
+      vertical-align: middle;
+    }
+    @keyframes musicPulse {
+      0% { transform: scale(1); color: #00ffb4; }
+      100% { transform: scale(1.2); color: #005eff; }
+    }
+    /* Fondo para resultado */
+    .live-bg {
+      background: linear-gradient(120deg, #00ffb4 0%, #005eff 100%);
+      color: #fff;
+      border-radius: 14px;
+      box-shadow: 0 4px 24px #00ffb4aa;
+      padding: 1.5rem 1rem;
+      margin-bottom: 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .live-bg::after {
+      content: '';
+      position: absolute;
+      top: -40px; left: -40px;
+      width: 120px; height: 120px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 50%;
+      z-index: 0;
+      animation: liveGlow 2s infinite alternate;
+    }
+    @keyframes liveGlow {
+      0% { opacity: 0.08; }
+      100% { opacity: 0.18; }
+    }
+    .amount-badge {
+      font-size: 1.5rem;
+      font-weight: bold;
+      background: #fff;
+      color: #005eff;
+      border-radius: 8px;
+      padding: 0.3em 0.8em;
+      box-shadow: 0 2px 8px #005eff33;
+      margin-left: 0.5em;
+      vertical-align: middle;
+    }
+    /* Responsive */
+    @media (max-width: 768px) {
+      .live-bg { padding: 1rem 0.5rem; }
+      .amount-badge { font-size: 1.1rem; }
     }
   </style>
 </head>
 <body>
+  <div class="bg-animated"></div>
   <div class="container py-5">
     <div class="row justify-content-center">
       <div class="col-lg-8">
         <div class="card mb-4 fade-in">
-          <div class="card-header bg-primary text-white">
+          <div class="card-header text-white">
             <h3 class="mb-0 text-center"><i class="bi bi-credit-card me-2"></i> Validador de Tarjetas</h3>
           </div>
           <div class="card-body">
@@ -58,7 +185,11 @@
                 >
                 <small class="text-muted">Ingrese los datos en formato: <b>NÚMERO|MES|AÑO|CVV</b></small>
               </div>
-              
+              <div class="mb-4">
+                <div class="progress" style="height: 18px;">
+                  <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 0%"></div>
+                </div>
+              </div>
               <div class="d-grid">
                 <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
                   <span id="btnText">Validar Tarjeta</span>
@@ -70,9 +201,12 @@
             </form>
             
             {{#if results}}
-              <div class="alert alert-success mt-4 fade-in">
+              <div class="live-bg fade-in">
                 <div class="d-flex align-items-center mb-2">
-                  <h4 class="mb-0"><i class="bi bi-check-circle-fill me-2"></i> Validación Exitosa</h4>
+                  <h4 class="mb-0">
+                    <i class="bi bi-check-circle-fill me-2"></i> Validación Exitosa
+                    <span class="music-icon ms-2" id="musicIcon" title="¡Cobro exitoso!"><i class="bi bi-music-note-beamed"></i></span>
+                  </h4>
                 </div>
                 <hr>
                 <div class="row">
@@ -89,6 +223,7 @@
                     {{#if results.uuid}}
                       <p><strong>UUID:</strong> <span class="text-break">{{results.uuid}}</span></p>
                     {{/if}}
+                    <p><strong>Monto cobrado:</strong> <span class="amount-badge">${{results.amount}}</span></p>
                   </div>
                 </div>
               </div>
@@ -124,8 +259,14 @@
     </div>
   </div>
 
+  <!-- Música de éxito -->
+   <audio id="LiveAudio" preload="auto">
+        <source src="./live.wav" type="audio/mpeg">
+    </audio>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    // Barra de progreso animada al enviar formulario
     document.getElementById('cardForm').addEventListener('submit', function() {
       const btn = document.getElementById('submitBtn');
       const btnText = document.getElementById('btnText');
@@ -133,6 +274,33 @@
       btn.disabled = true;
       btnText.textContent = 'Procesando...';
       spinner.classList.remove('d-none');
+      // Barra de progreso animada
+      const progressBar = document.getElementById('progressBar');
+      progressBar.style.width = '0%';
+      progressBar.classList.add('progress-bar-animated');
+      let width = 0;
+      const interval = setInterval(() => {
+        if (width >= 100) {
+          clearInterval(interval);
+        } else {
+          width += 2 + Math.random() * 3;
+          progressBar.style.width = width + '%';
+        }
+      }, 40);
+    });
+
+    // Efectos visuales y música si es LIVE
+    window.addEventListener('DOMContentLoaded', function() {
+      {{#if results}}
+        document.body.classList.add('live-border');
+        // Música de éxito
+        const audio = document.getElementById('LiveAudio');
+        audio.volume = 0.80;
+        setTimeout(() => { audio.play(); }, 500);
+      {{/if}}
+      {{#if error}}
+        document.body.classList.add('error-border');
+      {{/if}}
     });
   </script>
 </body>

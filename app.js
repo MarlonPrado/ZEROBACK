@@ -1,6 +1,5 @@
 const express = require('express');
 const axios = require('axios');
-const https = require('https');
 const path = require('path');
 const faker = require('faker');
 const { HttpsProxyAgent } = require('https-proxy-agent');
@@ -14,9 +13,6 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static('public'));
-
-// Middleware para ignorar verificación SSL (SOLO DESARROLLO)
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 // Lista de proxies Smartproxy (todos con http://)
 const proxyList = [
@@ -77,19 +73,6 @@ function getRandomProxy() {
   const idx = Math.floor(Math.random() * proxyList.length);
   return proxyList[idx];
 }
-
-// Validar proxy al iniciar el servidor (puedes dejarlo así o también randomizar)
-const proxyUrl = getRandomProxy();
-const proxyAgent = new HttpsProxyAgent(proxyUrl);
-
-const url = 'https://ip.smartproxy.com/json';
-axios
-  .get(url, {
-    httpsAgent: proxyAgent,
-  })
-  .then((response) => {
-    console.log(response.data);
-  });
 
 // Utilidad para loguear en consola y en logs
 function addLog(logs, msg) {
@@ -158,7 +141,7 @@ app.post('/validate', async (req, res) => {
   let cardBank = '';
   let amount = 0;
 
-  // --- NUEVO: Proxy y User-Agent únicos por flujo ---
+  // Proxy y User-Agent únicos por flujo
   const proxyUrl = getRandomProxy();
   const proxyAgent = new HttpsProxyAgent(proxyUrl);
   const userAgent = new UserAgent().toString();
@@ -176,8 +159,6 @@ app.post('/validate', async (req, res) => {
     // Endpoint 1: Pixel Tracking
     addLog(logs, '🟡 Enviando a endpoint 1 (Pixel)...');
     await sendPixelRequest(logs, proxyAgent, userAgent);
-
-    // OMITIDO: Endpoint 2 OPTIONS Preflight
 
     // Endpoint 3: GET Form Data (y extraer cookies)
     addLog(logs, '🟡 Enviando a endpoint 3 (GET Form)...');

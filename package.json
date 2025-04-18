@@ -11,6 +11,7 @@
         "faker": "^5.5.3",
         "hbs": "^4.2.0",
         "https-proxy-agent": "^7.0.6",
+        "quickemailverification": "^1.0.4",
         "user-agents": "^1.1.511"
     }
 }
